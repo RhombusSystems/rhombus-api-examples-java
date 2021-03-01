@@ -6,7 +6,6 @@ buildscript {
     }
     dependencies {
     	classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
-        classpath('io.swagger.codegen.v3:swagger-codegen-maven-plugin:3.0.24')
     }
 }
 
@@ -33,7 +32,7 @@ targetCompatibility = 1.8
 repositories {
     mavenCentral()
     mavenLocal()
-    maven { url "http://nexus.rhombus.corp:8081/repository/maven" }
+	maven { url "https://public-repo.rhombussystems.com/maven/" }
 }
 
 dependencies {
