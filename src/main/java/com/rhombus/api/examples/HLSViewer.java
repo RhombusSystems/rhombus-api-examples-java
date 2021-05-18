@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -120,13 +121,17 @@ public class HLSViewer
 		}
 
 		final String authScheme;
+		final Function<String, String> urlRewriter;
 		if(commandLine.hasOption("keystore"))
 		{
 			authScheme = "api";
+			urlRewriter = (originalUrl) -> originalUrl.replace(".dash.", ".dash-internal.")
+					.replace("/dash/mobile/outbound", "/dash/api/outbound");
 		}
 		else
 		{
 			authScheme = "api-token";
+			urlRewriter = (originalUrl) -> originalUrl.replace("/dash/mobile/outbound", "/dash/api/outbound");
 		}
 
 		_logger.info("Initializing API Key [" + apiKey + "] and Keystore [" + keystoreFile + "]");
@@ -140,7 +145,7 @@ public class HLSViewer
 				_logger.info("Copying Live Footage from Camera [" + deviceUuid + "] to [" + outputFile + "] until ["
 						+ new Date(TimeUnit.SECONDS.toMillis(durationSec)) + "]");
 
-				_downloadLiveFootageWAN(deviceUuid, durationSec, outputStream);
+				_downloadLiveFootageWAN(deviceUuid, durationSec, outputStream, urlRewriter);
 			}
 			else
 			{
@@ -148,7 +153,7 @@ public class HLSViewer
 						+ "] for the period [" + new Date(TimeUnit.SECONDS.toMillis(startTimeSec)) + "] to ["
 						+ new Date(TimeUnit.SECONDS.toMillis(startTimeSec + durationSec)) + "]");
 
-				_downloadVODFootageWAN(deviceUuid, startTimeSec, durationSec, outputStream);
+				_downloadVODFootageWAN(deviceUuid, startTimeSec, durationSec, outputStream, urlRewriter);
 			}
 		}
 
@@ -246,7 +251,7 @@ public class HLSViewer
 	}
 
 	private static void _downloadLiveFootageWAN(final String deviceUuid, final Long durationSec,
-			final OutputStream outputStream) throws Exception
+			final OutputStream outputStream, final Function<String, String> urlRewriter) throws Exception
 	{
 		final CameraWebserviceApi cameraWebservice = new CameraWebserviceApi(_apiClient);
 
@@ -254,8 +259,7 @@ public class HLSViewer
 		getMediaUrisRequest.setCameraUuid(deviceUuid);
 		final CameraGetMediaUrisWSResponse getMediaUrisResponse = cameraWebservice.getMediaUris(getMediaUrisRequest);
 
-		final String hlsUri = getMediaUrisResponse.getWanLiveM3u8Uri().replace(".dash.", ".dash-internal.")
-				.replace("/dash/mobile/outbound", "/dash/api/outbound");
+		final String hlsUri = urlRewriter.apply(getMediaUrisResponse.getWanLiveM3u8Uri());
 
 		_logger.debug("HLS URI: " + hlsUri);
 
@@ -341,7 +345,7 @@ public class HLSViewer
 	}
 
 	private static void _downloadVODFootageWAN(final String deviceUuid, final Long startTimeSec, final Long durationSec,
-			final OutputStream outputStream) throws Exception
+			final OutputStream outputStream, final Function<String, String> urlRewriter) throws Exception
 	{
 		final CameraWebserviceApi cameraWebservice = new CameraWebserviceApi(_apiClient);
 
@@ -349,9 +353,8 @@ public class HLSViewer
 		getMediaUrisRequest.setCameraUuid(deviceUuid);
 		final CameraGetMediaUrisWSResponse getMediaUrisResponse = cameraWebservice.getMediaUris(getMediaUrisRequest);
 
-		final String hlsUri = getMediaUrisResponse.getWanVodM3u8UriTemplate().replace(".dash.", ".dash-internal.")
-				.replace("/dash/mobile/outbound", "/dash/api/outbound").replace("{START_TIME}", startTimeSec.toString())
-				.replace("{DURATION}", durationSec.toString());
+		final String hlsUri = urlRewriter.apply(getMediaUrisResponse.getWanVodM3u8UriTemplate())
+				.replace("{START_TIME}", startTimeSec.toString()).replace("{DURATION}", durationSec.toString());
 
 		_logger.debug("HLS URI: " + hlsUri);
 
