@@ -43,7 +43,7 @@ public class userList
             System.err.println(e.getMessage());
 
             new HelpFormatter().printHelp(
-                    "java -cp rhombus-api-examples-all.jar com.rhombus.api.examples.CopyFootageToLocalStorage",
+                    "java -cp rhombus-api-examples-all.jar com.rhombus.api.examples.userList",
                     options);
             return;
         }
