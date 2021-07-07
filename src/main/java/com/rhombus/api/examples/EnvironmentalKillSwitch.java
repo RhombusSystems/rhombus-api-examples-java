@@ -17,7 +17,7 @@ import javax.ws.rs.client.ClientBuilder;
 import java.util.ArrayList;
 import java.util.List;
 
-public class environmentalKillSwitch
+public class EnvironmentalKillSwitch
 {
     private static ApiClient _apiClient;
     private static ClimateWebserviceApi _climatewebservice;
