@@ -27,7 +27,7 @@ public class AddRemoveLabels
     {
         final Options options = new Options();
         options.addRequiredOption("a", "apikey", true, "API Key");
-        options.addRequiredOption("c", "choice", true, "Add or remove a label");
+        options.addRequiredOption("c", "choice", true, "Add or remove a label [add|remove]");
         options.addRequiredOption("l", "label", true, "Label name");
         options.addRequiredOption("n", "names", true, "Names of people to add or remove labels from (ex: name, name, name)");
 
@@ -38,7 +38,7 @@ public class AddRemoveLabels
             System.err.println(e.getMessage());
 
             new HelpFormatter().printHelp(
-                    "java -cp build/libs/rhombus-api-examples-all.jar com.rhombus.api.examples.AddRemoveLabels",
+                    "java -cp rhombus-api-examples-all.jar com.rhombus.api.examples.AddRemoveLabels",
                     options);
             return;
         }
