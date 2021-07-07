@@ -6,6 +6,8 @@ import com.rhombus.ApiClient;
 import com.rhombus.sdk.UserWebserviceApi;
 import com.rhombus.sdk.domain.*;
 import org.apache.commons.cli.*;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.http.Header;
 import org.apache.http.message.BasicHeader;
 import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJaxbJsonProvider;
@@ -15,11 +17,13 @@ import javax.net.ssl.SSLSession;
 import javax.ws.rs.client.ClientBuilder;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-public class userList
+public class UserList
 {
 
     private static ApiClient _apiClient;
@@ -30,8 +34,7 @@ public class userList
         final Options options = new Options();
         options.addRequiredOption("a", "apikey", true, "API Key");
         options.addOption("c", "csv", true, "Name the csv file for the names");
-        options.addOption("r", "report", true, "Name the file folder that the csv will be in");
-        options.addOption("n", "names", true, "Put names if you want specific people in the csv");
+        options.addOption("p", "path", true, "The path to the directory where the csv will be");
 
         final CommandLine commandLine;
         try
@@ -43,7 +46,7 @@ public class userList
             System.err.println(e.getMessage());
 
             new HelpFormatter().printHelp(
-                    "java -cp rhombus-api-examples-all.jar com.rhombus.api.examples.userList",
+                    "java -cp rhombus-api-examples-all.jar com.rhombus.api.examples.UserList",
                     options);
             return;
         }
@@ -51,8 +54,6 @@ public class userList
         String apikey = commandLine.getOptionValue("apikey");
         String csvName;
         String reportName;
-        List<List<String>> names = null;
-        List <String> namesList = null;
 
         if (commandLine.hasOption("csv"))
         {
@@ -60,26 +61,22 @@ public class userList
         }
         else
         {
-            csvName = "csvFile";
+            csvName = "csvFile.csv";
         }
 
-        if (commandLine.hasOption("report"))
+        if (commandLine.hasOption("path"))
         {
-            reportName = commandLine.getOptionValue("report");
+            reportName = commandLine.getOptionValue("path");
         }
         else
         {
-            reportName = "Report";
-        }
-        if (commandLine.hasOption("names"))
-        {
-            namesList = namesOrganizer(commandLine.getOptionValue("names"));
+            reportName = System.getProperty("user.dir");;
         }
 
         _initialize(apikey);
-        UserGetUsersInOrgWSResponse UserData = getUsersdata();
+        UserGetUsersInOrgWSResponse UserData = getUserdata();
         File fileCSV = CSVCreate(reportName, csvName);
-        CSVAdd(UserData, fileCSV, namesList);
+        CSVAdd(UserData, fileCSV);
     }
 
     private static void _initialize(final String apiKey) throws Exception
@@ -113,14 +110,7 @@ public class userList
         }
     }
 
-    public static List<String> namesOrganizer(String namesList)
-    {
-        namesList = namesList.replace(", ",",");
-        List<String> namesArray = Arrays.asList(namesList.split(","));
-        return namesArray;
-    }
-
-    private static UserGetUsersInOrgWSResponse getUsersdata() throws Exception
+    private static UserGetUsersInOrgWSResponse getUserdata() throws Exception
     {
         final UserGetUsersInOrgWSRequest userRequest = new UserGetUsersInOrgWSRequest();
         final UserGetUsersInOrgWSResponse userResponse = _userwebservice.getUsersInOrg(userRequest);
@@ -129,9 +119,7 @@ public class userList
 
     private static File CSVCreate(String reportName, String csvName)
     {
-        File report = new File(reportName);
-        report.mkdir();
-        File csvFile = new File(report + "/" + csvName + ".csv");
+        File csvFile = new File(reportName + "/" + csvName);
         if (csvFile.isFile())
         {
             System.out.println("File already exists");
@@ -139,44 +127,20 @@ public class userList
         }
         return csvFile;
     }
-    private static void CSVAdd(UserGetUsersInOrgWSResponse UserData, File csvFile, List <String> namesList) throws Exception
+    private static void CSVAdd(UserGetUsersInOrgWSResponse UserData, File csvFile) throws Exception
     {
-        FileWriter csvWriter = new FileWriter(csvFile);
-        csvWriter.append("Name");
-        csvWriter.append(",");
-        csvWriter.append("Email");
-        csvWriter.append("\n");
-
-        final List <UserType> Users = UserData.getUsers();
-        if (namesList != null)
+        try (CSVPrinter printer = new CSVPrinter(new FileWriter(csvFile), CSVFormat.EXCEL))
         {
-            for (String name : namesList)
-            {
-                for (UserType rowData : Users)
-                {
-                    if (name.equals(rowData.getName()))
-                    {
-                        csvWriter.append(String.join(",", rowData.getName()));
-                        csvWriter.append(',');
-                        csvWriter.append(String.join(",", rowData.getEmailCaseSensitive()));
-                        csvWriter.append("\n");
-                    }
-
-                }
-            }
-
-        }
-        else
-        {
+            printer.printRecord("Name", "Email");
+            final List <UserType> Users = UserData.getUsers();
             for (UserType rowData : Users)
             {
-                csvWriter.append(String.join(",", rowData.getName()));
-                csvWriter.append(',');
-                csvWriter.append(String.join(",", rowData.getEmailCaseSensitive()));
-                csvWriter.append("\n");
+                printer.printRecord(rowData.getName(), rowData.getEmailCaseSensitive());
             }
         }
-        csvWriter.flush();
-        csvWriter.close();
+        catch (IOException ex)
+        {
+            ex.printStackTrace();
+        }
     }
 }
