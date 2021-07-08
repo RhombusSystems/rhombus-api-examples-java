@@ -16,6 +16,7 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;
 import javax.ws.rs.client.ClientBuilder;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -33,8 +34,7 @@ public class UserList
     {
         final Options options = new Options();
         options.addRequiredOption("a", "apikey", true, "API Key");
-        options.addOption("c", "csv", true, "Name the csv file for the names");
-        options.addOption("p", "path", true, "The path to the directory where the csv will be");
+        options.addOption("c", "csv", true, "Path to the csv and name the csv");
 
         final CommandLine commandLine;
         try
@@ -52,30 +52,22 @@ public class UserList
         }
 
         String apikey = commandLine.getOptionValue("apikey");
-        String csvName;
-        String reportName;
+        String csv;
+        String path;
 
         if (commandLine.hasOption("csv"))
         {
-            csvName = commandLine.getOptionValue("csv");
+            csv = commandLine.getOptionValue("csv");
         }
         else
         {
-            csvName = "csvFile.csv";
-        }
-
-        if (commandLine.hasOption("path"))
-        {
-            reportName = commandLine.getOptionValue("path");
-        }
-        else
-        {
-            reportName = System.getProperty("user.dir");;
+            path = System.getProperty("user.dir");
+            csv = path + "/users.csv";
         }
 
         _initialize(apikey);
         UserGetUsersInOrgWSResponse UserData = getUserdata();
-        File fileCSV = CSVCreate(reportName, csvName);
+        File fileCSV = CSVCreate(csv);
         CSVAdd(UserData, fileCSV);
     }
 
@@ -117,17 +109,12 @@ public class UserList
         return userResponse;
     }
 
-    private static File CSVCreate(String reportName, String csvName)
+    private static File CSVCreate(String csv)
     {
-        File csvFile = new File(reportName + "/" + csvName);
-        if (csvFile.isFile())
-        {
-            System.out.println("File already exists");
-            System.exit(0);
-        }
+        File csvFile = new File(csv);
         return csvFile;
     }
-    private static void CSVAdd(UserGetUsersInOrgWSResponse UserData, File csvFile) throws Exception
+    private static void CSVAdd(UserGetUsersInOrgWSResponse UserData, File csvFile)
     {
         try (CSVPrinter printer = new CSVPrinter(new FileWriter(csvFile), CSVFormat.EXCEL))
         {
@@ -140,7 +127,8 @@ public class UserList
         }
         catch (IOException ex)
         {
-            ex.printStackTrace();
+            System.out.println("Couldn't open file");
+            System.exit(0);
         }
     }
 }
