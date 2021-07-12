@@ -42,8 +42,8 @@ public class TimelapseSaver
         final Options options = new Options();
         options.addRequiredOption("a", "apikey", true, "API Key");
         options.addRequiredOption("c", "camera", true, "Which camera do you want the timelapse from");
-        options.addOption("s", "startTime", true, "Add the end search time in yyyy-mm-dd~(0)0:00:00 or default to 1 day before current time");
-        options.addOption("e", "endTime", true, "Add the end search time in yyyy-mm-dd~(0)0:00:00 or default to current time");
+        options.addOption("s", "startTime", true, "Add the end search time in MM/dd/yyyy~HH:mm:ss or default to 1 day before current time");
+        options.addOption("e", "endTime", true, "Add the end search time in MM/dd/yyyy~HH:mm:ss or default to current time");
         options.addOption("d", "vidDuration", true, "Specify the duration of the timelapse you want default: 120 sec");
         options.addOption("f", "format", true, "Specify the format of the video [.mov|.mp4]");
         options.addOption("t", "timestamp", true, "Do you want the timestamp on the timelapse [True]");
