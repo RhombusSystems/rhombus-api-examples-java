@@ -26,6 +26,7 @@ public class EnvironmentalKillSwitch
     {
         final Options options = new Options();
         options.addRequiredOption("ak", "apikey", true, "API Key");
+        options.addRequiredOption("s", "sensor", true, "Which sensor do you want to use");
         options.addRequiredOption("p", "plug", true, "What plug do yuo want to turn off");
         options.addOption("ho", "host", true, "What is the host name of the power strip");
         options.addOption("a", "alias", true, "What is the alias name of the power strip");
@@ -66,6 +67,7 @@ public class EnvironmentalKillSwitch
             coldString = "70";
         }
         final String apikey = commandLine.getOptionValue("apikey");
+        final String sensor = commandLine.getOptionValue("sensor");
         final int plug = Integer.parseInt(plugString);
         final long hot = Integer.parseInt(hotString);
         final long cold = Integer.parseInt(coldString);
@@ -77,7 +79,7 @@ public class EnvironmentalKillSwitch
         Boolean running = true;
         while (running)
         {
-            float celsius = climateData();
+            float celsius = climateData(sensor);
             long fahrenheit = CelsiusConvertToFahrenheit(celsius);
             if (fahrenheit > hot)
             {
@@ -148,7 +150,7 @@ public class EnvironmentalKillSwitch
         }
     }
 
-    public static float climateData() throws Exception
+    public static float climateData(String sensor) throws Exception
     {
         float celsius = 0;
         ClimateGetMinimalClimateStatesWSRequest climateRequest = new ClimateGetMinimalClimateStatesWSRequest();
@@ -156,8 +158,15 @@ public class EnvironmentalKillSwitch
         final List<ClimateMinimalClimateStateType> data = climateResponse.getClimateStates();
         for( ClimateMinimalClimateStateType temp : data)
         {
-            celsius = temp.getTemperatureCelcius();
+            if (temp.getName().equals(sensor))
+            {
+                celsius = temp.getTemperatureCelcius();
+                return celsius;
+            }
+
         }
+        System.out.println("No environmental sensor was found");
+        System.exit(1);
         return celsius;
     }
 
