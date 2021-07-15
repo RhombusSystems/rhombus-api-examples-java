@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.text.SimpleDateFormat;
 
 public class FaceReport
 {
@@ -43,8 +44,8 @@ public class FaceReport
     {
         final Options options = new Options();
         options.addRequiredOption("a", "apikey", true, "API Key");
-        options.addOption("s", "start", true, "Start Time format: MM/dd/yyyy~HH:mm:ss");
-        options.addOption("e", "end", true, "End Time format: MM/dd/yyyy~HH:mm:ss");
+        options.addOption("s", "start", true, "Start Time format: yyyy-MM-dd~HH:mm:ss");
+        options.addOption("e", "end", true, "End Time format: yyyy-MM-dd~HH:mm:ss");
         options.addOption("f", "filter", true, "What filter do you want [alert|trusted|named|other]");
         options.addOption("n", "name", true, "Searches for a name");
         options.addOption("cn", "cameraname", true, "name of the camera to search");
@@ -196,10 +197,10 @@ public class FaceReport
         }
     }
 
-    private static void savingIMG(String apikey, String thumnail, OutputStream outputStream) throws Exception
+    private static void savingIMG(String apikey, String thumbnail, OutputStream outputStream) throws Exception
     {
         {
-            final HttpGet pictureRequest = new HttpGet(thumnail);
+            final HttpGet pictureRequest = new HttpGet(thumbnail);
             pictureRequest.setHeader("x-auth-scheme", "api-token");
             pictureRequest.setHeader("x-auth-apikey", apikey);
 
@@ -219,7 +220,9 @@ public class FaceReport
 
     private static long millisecondTime(String time) throws Exception
     {
-        long milliTime = new java.text.SimpleDateFormat("MM/dd/yyyy~HH:mm:ss").parse(time).getTime();
+        String pattern = "yyyy-MM-dd~HH:mm:ss";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+        long milliTime = simpleDateFormat.parse(time).getTime();
         return milliTime;
     }
 
@@ -230,9 +233,9 @@ public class FaceReport
         return minimalcameraresponse;
     }
 
-    private static String cameraName(String deviceUuid, CameraGetMinimalCameraStateListWSResponse Datacamera)
+    private static String cameraName(String deviceUuid, CameraGetMinimalCameraStateListWSResponse dataCamera)
     {
-        final List <MinimalDeviceStateType> Camera = Datacamera.getCameraStates();
+        final List <MinimalDeviceStateType> Camera = dataCamera.getCameraStates();
         for( MinimalDeviceStateType rowdata : Camera)
         {
             if (deviceUuid.equals(rowdata.getUuid()))
@@ -243,7 +246,7 @@ public class FaceReport
         return "";
     }
 
-    private static FaceGetRecentFaceEventsWSResponse recentFaces(FaceGetRecentFaceEventsWSRequestFilter.TypesEnum filter, long StartTime, long endTime) throws Exception
+    private static FaceGetRecentFaceEventsWSResponse recentFaces(FaceGetRecentFaceEventsWSRequestFilter.TypesEnum filter, long startTime, long endTime) throws Exception
     {
         List <FaceGetRecentFaceEventsWSRequestFilter.TypesEnum> filterList;
         filterList = new ArrayList(Arrays.asList(filter));
@@ -252,7 +255,7 @@ public class FaceReport
         Filter.setTypes(filterList);
         faceeventsrequest.setFilter(Filter);
         FaceGetRecentFaceEventsWSRequestInterval interval = new FaceGetRecentFaceEventsWSRequestInterval();
-        interval.setStart(StartTime);
+        interval.setStart(startTime);
         interval.setEnd(endTime);
         faceeventsrequest.setInterval(interval);
         final FaceGetRecentFaceEventsWSResponse faceeventsresponse = _facewebservice.getRecentFaceEventsV2(faceeventsrequest);
