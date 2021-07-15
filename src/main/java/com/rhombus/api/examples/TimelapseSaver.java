@@ -41,7 +41,7 @@ public class TimelapseSaver
     {
         final Options options = new Options();
         options.addRequiredOption("a", "apikey", true, "API Key");
-        options.addRequiredOption("c", "camera", true, "Which camera do you want the timelapse from");
+        options.addRequiredOption("c", "camera", true, "Which camera do you want the timelapse from: Put the camera name");
         options.addOption("s", "startTime", true, "Add the end search time in MM/dd/yyyy~HH:mm:ss or default to 1 day before current time");
         options.addOption("e", "endTime", true, "Add the end search time in MM/dd/yyyy~HH:mm:ss or default to current time");
         options.addOption("d", "vidDuration", true, "Specify the duration of the timelapse you want default: 120 sec");
@@ -220,11 +220,13 @@ public class TimelapseSaver
         }
         String clipUuid = generateTimelapse(cameraUuid, startTime, endTime, duration, timestamp, cameraDetails, skipNights, skipWeekends, format);
 
+        System.out.println("Timelapse was created and is now rendering");
         TimeUnit.SECONDS.sleep(15);
         while (!downloadProgress(clipUuid))
         {
             TimeUnit.SECONDS.sleep(10);
         }
+        System.out.println("The timelapse has been downloaded");
         try (final FileOutputStream outputStream = new FileOutputStream(outputFile))
         {
             savingTimelapse(clipUuid, outputStream, apikey);
@@ -332,6 +334,7 @@ public class TimelapseSaver
         {
             if (clipUuid.equals(item.getClipUuid()))
             {
+                System.out.println("The timelapse is at " + item.getStatus().getPercentComplete() + " percent");
                 if (item.getStatus().getPercentComplete() == 100)
                 {
                     return true;
