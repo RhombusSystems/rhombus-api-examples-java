@@ -29,7 +29,7 @@ public class TagFilterStats {
     private static ApiClient _apiClient;
     private static ProximityWebserviceApi _proximityWebservice;
 
-    private static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         final Options options = new Options();
         // command line arguments for user
         options.addRequiredOption("a", "apiKey", true, "API Key");
