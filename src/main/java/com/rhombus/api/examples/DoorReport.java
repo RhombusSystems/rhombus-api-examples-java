@@ -1,6 +1,5 @@
 package com.rhombus.api.examples;
 
-import com.rhombus.sdk.LocationWebserviceApi;
 import com.rhombus.sdk.DoorWebserviceApi;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -30,9 +29,8 @@ import java.util.List;
 public class DoorReport {
     private static ApiClient _apiClient;
     private static DoorWebserviceApi _doorWebservice;
-    private static LocationWebserviceApi _locationWebservice;
 
-    public static void main(String[] args) throws Exception {
+    private static void main(String[] args) throws Exception {
         final Options options = new Options();
         // command line arguments for the user
         options.addRequiredOption("a", "apikey", true, "API key");
@@ -60,7 +58,7 @@ public class DoorReport {
         String endTime = commandLine.getOptionValue("endTime");
 
         String csv;
-        String real_csv;
+        String realCsv;
         String path;
         long startTimeMilli;
         long endTimeMilli;
@@ -69,14 +67,14 @@ public class DoorReport {
         if (commandLine.hasOption("csv")) {
             csv = commandLine.getOptionValue("csv");
             if (csv.contains(".csv")){
-                real_csv = csv;
+                realCsv = csv;
             }
             else {
-                real_csv = csv + ".csv";
+                realCsv = csv + ".csv";
             }
         } else {
             path = System.getProperty("user.dir");
-            real_csv = path + "/doors.csv";
+            realCsv = path + "/doors.csv";
         }
 
         if (commandLine.hasOption("startTime")) {
@@ -108,7 +106,7 @@ public class DoorReport {
             System.out.println("Invalid sensor name");
             System.exit(0);
         }
-        File csvFile = CSVCreate(real_csv);   // creating the CSV file
+        File csvFile = CSVCreate(realCsv);   // creating the CSV file
         doorEvents(sensorUuid, sensorName, startTimeMilli, endTimeMilli, csvFile);  // writing to the CSV file
     }
 
@@ -140,12 +138,11 @@ public class DoorReport {
             _apiClient.addDefaultHeader("x-auth-apikey", apiKey);
 
             _doorWebservice = new DoorWebserviceApi(_apiClient);
-            _locationWebservice = new LocationWebserviceApi(_apiClient);
         }
     }
 
     // method converts sensor name to uuid
-    public static String uuidConvert(String sensorName) throws Exception {
+    private static String uuidConvert(String sensorName) throws Exception {
         final DoorGetMinimalDoorStatesWSRequest dataRequest = new DoorGetMinimalDoorStatesWSRequest();
         final DoorGetMinimalDoorStatesWSResponse dataResponse = _doorWebservice.getMinimalDoorStateList(dataRequest);
         final List<DoorMinimalDoorStateType> list = dataResponse.getDoorStates();
@@ -169,7 +166,7 @@ public class DoorReport {
         return csvFile;
     }
 
-    public static void doorEvents(String sensorUuid, String sensorName, long startTimeMilli, long endTimeMilli, File csvFile) throws Exception {
+    private static void doorEvents(String sensorUuid, String sensorName, long startTimeMilli, long endTimeMilli, File csvFile) throws Exception {
         // gathering the data on the door events
         final DoorGetDoorEventsForSensorWSRequest doorRequest = new DoorGetDoorEventsForSensorWSRequest();
         // setting the parameters for the API call
