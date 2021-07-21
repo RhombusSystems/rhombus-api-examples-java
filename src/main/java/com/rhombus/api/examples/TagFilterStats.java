@@ -29,7 +29,7 @@ public class TagFilterStats {
     private static ApiClient _apiClient;
     private static ProximityWebserviceApi _proximityWebservice;
 
-    public static void main(String[] args) throws Exception {
+    private static void main(String[] args) throws Exception {
         final Options options = new Options();
         // command line arguments for user
         options.addRequiredOption("a", "apiKey", true, "API Key");
@@ -40,7 +40,6 @@ public class TagFilterStats {
         options.addOption("m", "movement", true, "Filter by the type of movement");
         options.addOption( "csv", true, "Name of the CSV file");
         options.addOption("text", true, "Name of the text file");
-//        options.addOption("folder", true, "Name of folder for text and CSV files");
 
         // specifies what is displayed if help command is given
         final CommandLine commandLine;
@@ -62,9 +61,9 @@ public class TagFilterStats {
         String stats = commandLine.getOptionValue("tagStats");
 
         String csv;
-        String real_csv;
+        String realCsv;
         String text;
-        String real_text;
+        String realText;
         String movement;
 
         long startTimeMilli;
@@ -76,24 +75,24 @@ public class TagFilterStats {
         if (commandLine.hasOption("csv")) {
             csv = commandLine.getOptionValue("csv");
             if (csv.contains(".csv")) { // checking for ".csv" in CSV file name
-                real_csv = csv;
+                realCsv = csv;
             } else {
-                real_csv = csv + ".csv"; // adding ".csv" if not present in CSV file name
+                realCsv = csv + ".csv"; // adding ".csv" if not present in CSV file name
             }
         } else {
-            real_csv = path + "/tags.csv";
+            realCsv = path + "/tags.csv";
         }
 
         // verifying text file name input
         if (commandLine.hasOption("text")) {
             text = commandLine.getOptionValue("text");
             if (text.contains(".txt")) { // checking for ".txt" in text file name
-                real_text = text;
+                realText = text;
             } else {
-                real_text = text + ".txt"; // adding ".txt" if not present in text file name
+                realText = text + ".txt"; // adding ".txt" if not present in text file name
             }
         } else {
-            real_text = path + "/tags.txt";
+            realText = path + "/tags.txt";
         }
 
         // verifying movement filer input
@@ -136,12 +135,12 @@ public class TagFilterStats {
             System.exit(0);
         }
 
-        File csvFile = CSVCreate(real_csv);   // creating the CSV file
-        FileCreate(tagUuid, tagName, csvFile, startTimeMilli, endTimeMilli, stats, movement, real_text);
+        File csvFile = CSVCreate(realCsv);   // creating the CSV file
+        FileCreate(tagUuid, tagName, csvFile, startTimeMilli, endTimeMilli, stats, movement, realText);
         // writing to the CSV file (and the text file, if option chosen)
     }
 
-    public static void _initialize(String apiKey) {
+    private static void _initialize(String apiKey) {
         /*
          * API CLIENT
          */
@@ -178,7 +177,7 @@ public class TagFilterStats {
     }
 
     // method gets seconds from HH:MM:SS format
-    public static int getSec(String time_str) throws Exception {
+    private static int getSec(String time_str) throws Exception {
         String h = time_str.split(":")[0]; // number of hours
         String m = time_str.split(":")[1]; // number of minutes
         String s = time_str.split(":")[2]; // number of seconds
@@ -186,7 +185,7 @@ public class TagFilterStats {
     }
 
     // method converts Tag name to uuid
-    public static String uuidConvert(String tagName) throws Exception {
+    private static String uuidConvert(String tagName) throws Exception {
         final ProximityGetMinimalProximityStatesWSRequest tagDataRequest = new ProximityGetMinimalProximityStatesWSRequest();
         final ProximityGetMinimalProximityStatesWSResponse tagDataResponse = _proximityWebservice.getMinimalProximityStateList(tagDataRequest);
         final List<ProximityMinimalProximityStateType> list = tagDataResponse.getProximityStates();
@@ -205,7 +204,7 @@ public class TagFilterStats {
     }
 
     // method calculates the average seconds from a list of HH:MM:SS timestamps
-    public static int avgCalc(List<String> some_list, int count) throws Exception {
+    private static int avgCalc(List<String> some_list, int count) throws Exception {
         int total_seconds = 0;
         int avg_seconds = 0;
         for (int i = 0; i < some_list.size(); i++) {
