@@ -30,7 +30,7 @@ public class DoorReport {
     private static ApiClient _apiClient;
     private static DoorWebserviceApi _doorWebservice;
 
-    private static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         final Options options = new Options();
         // command line arguments for the user
         options.addRequiredOption("a", "apikey", true, "API key");
