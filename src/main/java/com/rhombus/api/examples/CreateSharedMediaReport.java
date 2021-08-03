@@ -13,28 +13,28 @@ import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJaxbJsonP
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;
 import javax.ws.rs.client.ClientBuilder;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.InputMismatchException;
 import java.util.List;
 
 import java.sql.Timestamp;
 
-//This script runs a quick report on the status of all cameras in an organization, report includes name,uuid,status and details if there are anypublic
-class CreateSharedMediaReport
+//This script runs a quick report on the status of all cameras in an organization, report includes name,uuid,status and details if there are any
+//Also allows user to end sharing of shared timelapses, clips, and streams.
+public class CreateSharedMediaReport
 {
     private static ApiClient _apiClient;
     private static CameraWebserviceApi _cameraWebService;
     private static VideoWebserviceApi _videoWebService;
     private static EventWebserviceApi _eventWebService;
-    private static Timestamp _currentTime;
 
     public static void main(String[] args) throws Exception
     {
-        _currentTime = new Timestamp(System.currentTimeMillis());
-
         final Options options = new Options();
         options.addRequiredOption("a", "apikey", true, "API Key");
+        options.addOption("rc","removeSharedClip", true,"UUID of shared Clip to remove");
+        options.addOption("rt","removeSharedTimelapse", true,"UUID of shared Timelapse to remove");
+        options.addOption("rs","removeSharedStream", true,"comma separated, UUID of Camera and UUID of Stream");
 
         final CommandLine commandLine;
         try
@@ -54,6 +54,48 @@ class CreateSharedMediaReport
         String apikey = commandLine.getOptionValue("apikey");
 
         _initialize(apikey);
+
+        if(commandLine.hasOption("rc"))
+        {
+            try {
+                removeSharedClip(commandLine.getOptionValue("rc"));
+            }
+            catch(com.rhombus.ApiException e)
+            {
+                System.out.println("Failed to Remove Shared Clip");
+            }
+        }
+        if(commandLine.hasOption("rt"))
+        {
+            try {
+                removeSharedTimelapse(commandLine.getOptionValue("rt"));
+            }
+            catch(com.rhombus.ApiException e)
+            {
+                System.out.println("Failed to Remove Shared Timelapse");
+            }
+        }
+        if(commandLine.hasOption("rs"))
+        {
+            try {
+                String claUUIDs = commandLine.getOptionValue("rs");
+                String[] streamUuids = claUUIDs.split(",");
+                if(streamUuids.length != 2)
+                {
+                    throw new InputMismatchException();
+                }
+                removeSharedStream(streamUuids[0], streamUuids[1]);
+            }
+            catch(InputMismatchException e)
+            {
+                System.out.println("Too Many/Few Arguments for removal of a Shared Stream");
+            }
+            catch(com.rhombus.ApiException e)
+            {
+                System.out.println("Failed to Remove Shared Stream");
+            }
+        }
+
         printSharedMediaReport();
     }
 
@@ -83,7 +125,28 @@ class CreateSharedMediaReport
             _eventWebService = new EventWebserviceApi(_apiClient);
         }
     }
-
+    private static void removeSharedClip(String uuid) throws Exception
+    {
+        final EventDeleteSharedClipGroupWSRequest removeSharedClipGroupRequest = new EventDeleteSharedClipGroupWSRequest();
+        removeSharedClipGroupRequest.setUuid(uuid);
+        _eventWebService.deleteSharedClipGroupV2(removeSharedClipGroupRequest);
+        return;
+    }
+    private static void removeSharedTimelapse(String uuid) throws Exception
+    {
+        final VideoDeleteSharedTimelapseGroupWSRequest removeSharedTimelapseRequest = new VideoDeleteSharedTimelapseGroupWSRequest();
+        removeSharedTimelapseRequest.setUuid(uuid);
+        _videoWebService.deleteSharedTimelapseGroup(removeSharedTimelapseRequest);
+        return;
+    }
+    private static void removeSharedStream(String camUuid, String uuid) throws Exception
+    {
+        final CameraDeleteSharedLiveVideoStreamWSRequest removeSharedStreamRequest = new CameraDeleteSharedLiveVideoStreamWSRequest();
+        removeSharedStreamRequest.setCameraUuid(camUuid);
+        removeSharedStreamRequest.setUuid(uuid);
+        _cameraWebService.deleteSharedLiveVideoStream(removeSharedStreamRequest);
+        return;
+    }
     private static CameraGetMinimalCameraStateListWSResponse getCameraData() throws Exception
     {
         final CameraGetMinimalCameraStateListWSRequest cameraRequest = new CameraGetMinimalCameraStateListWSRequest();
@@ -133,44 +196,44 @@ class CreateSharedMediaReport
             System.out.println("---------------------");
             if(sharedVideoStreams.size() > 0) {
                 System.out.println("Shared Streams");
-                System.out.println("\tCamera UUID, Password Protected, Start Time, End Time, URL");
+                System.out.println("\tCamera UUID, Stream UUID, Password Protected, Start Time, End Time, URL");
                 for (CameraSharedLiveVideoStreamWS s : sharedVideoStreams) {
-                    System.out.printf("\t%s, %s, %s, %s, %s\n", s.getCameraUuid(), s.isPasswordProtected(), s.getTimestampMs() / 1000, s.getExpirationTime(), s.getSharedLiveVideoStreamUrl());
+                    System.out.printf("\t%s,%s ,%s, %s, %s, %s\n", s.getCameraUuid(), s.getUuid(), s.isPasswordProtected(), s.getTimestampMs() / 1000, s.getExpirationTime(), s.getSharedLiveVideoStreamUrl());
                     if (s.isPasswordProtected() == null) {
-                        System.out.println("\t\tFlag Unsecured Stream");
+                        System.out.println("\t\tFlag - Public Stream");
                     }
                     if (s.getExpirationTime() == null) {
-                        System.out.println("\t\tFlag Unlimited Stream");
+                        System.out.println("\t\tFlag - Unlimited Stream");
                     }
                 }
             }
             else{System.out.println("No Shared Streams");}
             if(sharedTimelapseGroups.size() > 0) {
                 System.out.println("Shared Timelapse Groups");
-                System.out.println("\tTitle, UUID, Description, Password Protected, Created At, Expires At");
+                System.out.println("\tUUID, Title, Description, Password Protected, Created At, Expires At");
                 for (SharedTimelapseGroupWrapperType tg : sharedTimelapseGroups) {
-                    System.out.printf("\t%s, %s, %s, %s, %s, %s\n", tg.getTitle(),tg.getUuid(), tg.getDescription(), tg.isIsSecured(), tg.getCreatedAtMillis() / 1000, tg.getExpirationTimeSecs());
+                    System.out.printf("\t%s, %s, %s, %s, %s, %s\n", tg.getUuid(),tg.getTitle(), tg.getDescription(), tg.isIsSecured(), tg.getCreatedAtMillis() / 1000, tg.getExpirationTimeSecs());
                     if (tg.isIsSecured() == null) {
-                        System.out.println("\t\tFlag Unsecured Stream");
+                        System.out.println("\t\tFlag - Public Media");
                     }
                     if (tg.getExpirationTimeSecs() == null) {
-                        System.out.println("\t\tFlag Unlimited Stream");
+                        System.out.println("\t\tFlag - Unlimited Media");
                     }
                 }
             }
             else{System.out.println("No Shared Timelapse Groups");}
             if(sharedClipGroups.size() > 0){
                 System.out.println("Shared Clip Groups");
-                System.out.println("\tTitle, UUID, Description, Password Protected, Created At, Expires At");
+                System.out.println("\tUUID, Title, Description, Password Protected, Created At, Expires At");
                 for(SharedClipGroupWrapperV2Type cg : sharedClipGroups)
                 {
-                    System.out.printf("\t%s, %s, %s, %s, %s, %s\n", cg.getTitle(),cg.getUuid(),cg.getDescription(),cg.isIsSecured(),cg.getCreatedAtMillis()/1000,cg.getExpirationTimeSecs());
+                    System.out.printf("\t%s, %s, %s, %s, %s, %s\n", cg.getUuid(),cg.getTitle(),cg.getDescription(),cg.isIsSecured(),cg.getCreatedAtMillis()/1000,cg.getExpirationTimeSecs());
                     if(cg.isIsSecured() == false) {
-                        System.out.println("\t\tFlag Unsecured Stream");
+                        System.out.println("\t\tFlag - Public Media");
                     }
                     if(cg.getExpirationTimeSecs() == null)
                     {
-                        System.out.println("\t\tFlag Unlimited Stream");
+                        System.out.println("\t\tFlag - Unlimited Media");
                     }
                 }
             }
@@ -178,7 +241,7 @@ class CreateSharedMediaReport
         }
         catch (Exception e)
         {
-            System.out.println("Failed" + e);
+            System.out.println("Failed to generate Media Report -" + e);
         }
     }
 }
