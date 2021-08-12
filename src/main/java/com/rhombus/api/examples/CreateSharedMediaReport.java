@@ -3,6 +3,7 @@ package com.rhombus.api.examples;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.rhombus.ApiClient;
+import com.rhombus.ApiException;
 import com.rhombus.sdk.CameraWebserviceApi;
 import com.rhombus.sdk.EventWebserviceApi;
 import com.rhombus.sdk.VideoWebserviceApi;
@@ -16,8 +17,6 @@ import javax.ws.rs.client.ClientBuilder;
 import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.List;
-
-import java.sql.Timestamp;
 
 //This script runs a quick report on the status of all cameras in an organization, report includes name,uuid,status and details if there are any
 //Also allows user to end sharing of shared timelapses, clips, and streams.
@@ -186,9 +185,21 @@ public class CreateSharedMediaReport
             List<CameraSharedLiveVideoStreamWS> sharedVideoStreams = new ArrayList<>();
             for(MinimalDeviceStateType state : cameraList.getCameraStates())
             {
-                List<CameraSharedLiveVideoStreamWS> sharedVideoStreamsForUUID = getSharedStreams(state.getUuid()).getSharedLiveVideoStreams();
-                if (sharedVideoStreamsForUUID != null) {
-                    sharedVideoStreams.addAll(sharedVideoStreamsForUUID);
+                while(true) {
+                    try {
+                        List<CameraSharedLiveVideoStreamWS> sharedVideoStreamsForUUID = getSharedStreams(state.getUuid()).getSharedLiveVideoStreams();
+                        if (sharedVideoStreamsForUUID != null) {
+                            sharedVideoStreams.addAll(sharedVideoStreamsForUUID);
+                        }
+                        break;
+                    } catch (ApiException e) {
+                        if (e.getCode() == 429) {
+                            Thread.sleep(Long.parseLong(e.getResponseHeaders().get("Retry-After").get(0))*1000);
+                        } else {
+                            System.out.format("Unexpected Status Code Encountered - %i\n",e.getCode());
+                            continue;
+                        }
+                    }
                 }
             }
             System.out.println("---------------------");
