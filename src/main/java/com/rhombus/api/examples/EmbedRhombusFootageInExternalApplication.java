@@ -69,12 +69,13 @@ public class EmbedRhombusFootageInExternalApplication {
 			_initialize(apiKey);
 
 			final String clipUuid = generateClip(cameraUuid, timestamp, duration);
+			final String region = getClipRegion(clipUuid);
 			final String[] shareInfo = shareClip(clipUuid);
 			System.out.println("Share Url: " + shareInfo[0]);
 
 			if (getMediaUrls) {
-				System.out.println("Thumbnail URL: " + getThumbnailUrl(clipUuid));
-				System.out.println("Video URL: " + getVideoUrl(clipUuid));
+				System.out.println("Thumbnail URL: " + getThumbnailUrl(clipUuid,region));
+				System.out.println("Video URL: " + getVideoUrl(clipUuid,region));
 			}
 			if (downloadClipMedia) {
 				downloadMedia(shareInfo[1]);
@@ -175,16 +176,22 @@ public class EmbedRhombusFootageInExternalApplication {
 		String[] shareInfo = new String[]{shareUrl, shareUuid};
 		return shareInfo;
 	}
-
-	public static String getThumbnailUrl(final String clipUuid) throws Exception {
+	public static String getClipRegion(final String clipUuid) throws Exception{
+		final EventWebserviceApi eventWebservice = new EventWebserviceApi(_apiClient);
+		final EventGetSavedClipDetailsWSRequest savedClipDetailsWSRequest = new EventGetSavedClipDetailsWSRequest();
+		savedClipDetailsWSRequest.setClipUuid(clipUuid);
+		final EventGetSavedClipDetailsWSResponse savedClipDetailsWSResponse = eventWebservice.getSavedClipDetails(savedClipDetailsWSRequest);
+		return savedClipDetailsWSResponse.getSavedClip().getClipLocation().getRegion();
+	}
+	public static String getThumbnailUrl(final String clipUuid, final String region) throws Exception {
 		//https://media.rhombussystems.com/media/metadata/us-west-2/CLIPUUID.jpeg
-		String thumbnailUrl = "https://media.rhombussystems.com/media/metadata/us-west-2/" + clipUuid + ".jpeg";
+		String thumbnailUrl = "https://media.rhombussystems.com/media/metadata/"+region+"/" + clipUuid + ".jpeg";
 		return thumbnailUrl;
 	}
 
-	public static String getVideoUrl(final String clipUuid) throws Exception {
+	public static String getVideoUrl(final String clipUuid, final String region) throws Exception {
 		//https://media.rhombussystems.com/media/metadata/us-west-2/CLIPUUID.mp4
-		String videoUrl = "https://media.rhombussystems.com/media/metadata/us-west-2/" + clipUuid + ".mp4";
+		String videoUrl = "https://media.rhombussystems.com/media/metadata/"+region+"/" + clipUuid + ".mp4";
 		return videoUrl;
 	}
 
