@@ -1,6 +1,8 @@
 package com.rhombus.api.examples;
 
-import java.util.ArrayList;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -9,13 +11,16 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;
 import javax.ws.rs.client.ClientBuilder;
 
+import com.rhombus.sdk.domain.*;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.http.Header;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicHeader;
@@ -26,75 +31,72 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.rhombus.ApiClient;
 import com.rhombus.sdk.EventWebserviceApi;
 import com.rhombus.sdk.VideoWebserviceApi;
-import com.rhombus.sdk.domain.EventCreateSharedClipGroupWSRequest;
-import com.rhombus.sdk.domain.EventCreateSharedClipGroupWSRequestRuuidWrapper;
-import com.rhombus.sdk.domain.EventGetSavedClipDetailsWSRequest;
-import com.rhombus.sdk.domain.SavedClipWithDetailsType;
-import com.rhombus.sdk.domain.VideoSpliceV2WSRequest;
 
-public class EmbedRhombusFootageInExternalApplication
-{
+public class EmbedRhombusFootageInExternalApplication {
 	private static ApiClient _apiClient;
 	private static HttpClient _mediaClient;
 
-	public static void main(String[] args) throws Exception
-	{
+	public static void main(String[] args) throws Exception {
 		final Options options = new Options();
 		options.addRequiredOption("a", "apikey", true, "API Key");
-		options.addRequiredOption("c", "choice", true, "Add or remove a label [add|remove]");
-		options.addRequiredOption("l", "label", true, "Label name");
-		options.addRequiredOption("n", "names", true,
-				"Names of people to add or remove labels from (ex: name, name, name)");
+		options.addRequiredOption("t", "timestamp", true, "Time since epoch of start of Clip");
+		options.addRequiredOption("d", "duration", true, "Duration of clip to create");
+		options.addRequiredOption("u", "cameraUuid", true, "uuid of target camera");
+		options.addOption("url", "getMediaUrls", false, "Prints URLs for Thumbnail and MP4 download");
+		options.addOption("share", "getShareUrl", false, "Prints URL for Sharing clip");
+		options.addOption("download", "downloadClipMedia", false, "Downloads Thumbnail and Video");
 
 		final CommandLine commandLine;
-		try
-		{
+		try {
 			commandLine = new DefaultParser().parse(options, args);
-		}
-		catch (ParseException e)
-		{
+		} catch (ParseException e) {
 			System.err.println(e.getMessage());
 
 			new HelpFormatter().printHelp(
-					"java -cp rhombus-api-examples-all.jar com.rhombus.api.examples.AddRemoveLabels", options);
+					"java -cp rhombus-api-examples-all.jar com.rhombus.api.examples.EmbedRhombusFootageInExternalApplication", options);
 			return;
 		}
 
 		final String apiKey = commandLine.getOptionValue("apikey");
-		String namesList = commandLine.getOptionValue("names");
-		final String choice = commandLine.getOptionValue("choice");
-		final String label = commandLine.getOptionValue("label");
+		final long timestamp = Long.parseLong(commandLine.getOptionValue("timestamp"));
+		final int duration = Integer.parseInt(commandLine.getOptionValue("duration"));
+		final List<String> cameraUuid = Arrays.asList(commandLine.getOptionValue("cameraUuid").split(","));
+		final Boolean getMediaUrls = commandLine.hasOption("getMediaUrls");
+		final Boolean getShareUrl = commandLine.hasOption("getShareUrl");
+		final Boolean downloadClipMedia = commandLine.hasOption("downloadClipMedia");
 
-		if(!choice.equals("add") && !choice.equals("remove"))
-		{
-			System.out.println("-c [add, remove]");
-			System.exit(0);
+		if (getMediaUrls || getShareUrl || downloadClipMedia) {
+			_initialize(apiKey);
 
+			final String clipUuid = generateClip(cameraUuid, timestamp, duration);
+			final String[] shareInfo = shareClip(clipUuid);
+			System.out.println("Share Url: " + shareInfo[0]);
+
+			if (getMediaUrls) {
+				System.out.println("Thumbnail URL: " + getThumbnailUrl(clipUuid));
+				System.out.println("Video URL: " + getVideoUrl(clipUuid));
+			}
+			if (downloadClipMedia) {
+				downloadMedia(shareInfo[1]);
+			}
+		} else {
+			System.out.println("At least one of url, share, or download must be selected");
 		}
-
-		_initialize(apiKey);
 	}
 
-	private static void _initialize(final String apiKey) throws Exception
-	{
+	private static void _initialize(final String apiKey) throws Exception {
 		/*
 		 * API CLIENT
 		 */
 		{
-			final List<Header> defaultHeaders = new ArrayList<>();
-			defaultHeaders.add(new BasicHeader("x-auth-scheme", "api-token"));
-			defaultHeaders.add(new BasicHeader("x-auth-apikey", apiKey));
-
 			final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
 			clientBuilder
 					.register(new JacksonJaxbJsonProvider().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 							.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false));
 
-			final HostnameVerifier hostnameVerifier = new HostnameVerifier()
-			{
+			final HostnameVerifier hostnameVerifier = new HostnameVerifier() {
 				@Override
-				public boolean verify(String hostname, SSLSession session)
-				{
+				public boolean verify(String hostname, SSLSession session) {
 					return true;
 				}
 			};
@@ -113,26 +115,22 @@ public class EmbedRhombusFootageInExternalApplication
 		{
 			final HttpClientBuilder httpClientBuilder = HttpClients.custom();
 
-			final HostnameVerifier hostnameVerifier = new HostnameVerifier()
-			{
-
+			final HostnameVerifier hostnameVerifier = new HostnameVerifier() {
 				@Override
-				public boolean verify(String hostname, SSLSession session)
-				{
+				public boolean verify(String hostname, SSLSession session) {
 					return true;
 				}
 			};
 
 			_mediaClient = httpClientBuilder
-					.setSSLHostnameVerifier(hostnameVerifier).setDefaultHeaders(Arrays.asList(new BasicHeader[] {
-							new BasicHeader("x-auth-scheme", "api-token"), new BasicHeader("x-auth-apikey", apiKey) }))
+					.setSSLHostnameVerifier(hostnameVerifier).setDefaultHeaders(Arrays.asList(new BasicHeader[]{
+							new BasicHeader("x-auth-scheme", "api-token"), new BasicHeader("x-auth-apikey", apiKey)}))
 					.build();
 		}
 	}
 
-	public static void generateClip(final List<String> deviceUuids, final long startTimeMillis, final int durationSec)
-			throws Exception
-	{
+	public static String generateClip(final List<String> deviceUuids, final long startTimeMillis, final int durationSec)
+			throws Exception {
 		final VideoWebserviceApi videoWebservice = new VideoWebserviceApi(_apiClient);
 		final EventWebserviceApi eventWebservice = new EventWebserviceApi(_apiClient);
 
@@ -149,20 +147,18 @@ public class EmbedRhombusFootageInExternalApplication
 
 		SavedClipWithDetailsType savedClip = null;
 
-		for (int attempts = 0; attempts < 10 && savedClip == null; attempts++)
-		{
+		for (int attempts = 0; attempts < 10 && savedClip == null; attempts++) {
 			savedClip = eventWebservice.getSavedClipDetails(getSavedClipDetailsRequest).getSavedClip();
 
-			if(savedClip == null)
-			{
+			if (savedClip == null) {
 				System.out.println("Waiting for clip to finish uploading...");
 				Thread.sleep(10 << attempts);
 			}
 		}
+		return clipUuid;
 	}
 
-	public static String shareClip(final String clipUuid) throws Exception
-	{
+	public static String[] shareClip(final String clipUuid) throws Exception {
 		final EventWebserviceApi eventWebservice = new EventWebserviceApi(_apiClient);
 
 		final EventCreateSharedClipGroupWSRequestRuuidWrapper ruuidWrapper = new EventCreateSharedClipGroupWSRequestRuuidWrapper();
@@ -172,20 +168,44 @@ public class EmbedRhombusFootageInExternalApplication
 		createSharedClipRequest.setDescription("Rhombus Clip");
 		createSharedClipRequest.setTitle("Rhombus Clip");
 		createSharedClipRequest.setUuids(Collections.singletonList(ruuidWrapper));
+		final EventCreateSharedClipGroupWSResponse createSharedClipResponse = eventWebservice.createSharedClipGroupV3(createSharedClipRequest);
+		final String shareUrl = createSharedClipResponse.getShareUrl();
+		final String shareUuid = createSharedClipResponse.getUuid();
 
-		final String shareUrl = eventWebservice.createSharedClipGroupV3(createSharedClipRequest).getShareUrl();
-
-		return shareUrl;
+		String[] shareInfo = new String[]{shareUrl, shareUuid};
+		return shareInfo;
 	}
 
-	public static String downloadThumbnail() throws Exception
-	{
-		// https://media.rhombussystems.com/media/metadata/us-west-1/s2siGm6rRB6jFC8d9wSMqA.jpeg
-
+	public static String getThumbnailUrl(final String clipUuid) throws Exception {
+		//https://media.rhombussystems.com/media/metadata/us-west-2/CLIPUUID.jpeg
+		String thumbnailUrl = "https://media.rhombussystems.com/media/metadata/us-west-2/" + clipUuid + ".jpeg";
+		return thumbnailUrl;
 	}
 
-	public static String downloadClip() throws Exception
-	{
+	public static String getVideoUrl(final String clipUuid) throws Exception {
+		//https://media.rhombussystems.com/media/metadata/us-west-2/CLIPUUID.mp4
+		String videoUrl = "https://media.rhombussystems.com/media/metadata/us-west-2/" + clipUuid + ".mp4";
+		return videoUrl;
+	}
 
+	public static void downloadMedia(final String shareUuid) throws Exception {
+		final String clipUrl = "https://media.rhombussystems.com" + "/media/clips/share/" + shareUuid
+				+ ".mp4?x-auth-scheme=share-raw&x-share-type=clip&x-share-id="
+				+ shareUuid;
+
+		HttpGet videoRequest = new HttpGet(clipUrl);
+
+		HttpResponse videoResponse = _mediaClient.execute(videoRequest);
+
+		HttpEntity videoEntity = videoResponse.getEntity();
+
+		InputStream videoStream = videoEntity.getContent();
+
+		FileOutputStream videoOutput = new FileOutputStream(new File(shareUuid + "_Video.mp4"));
+		int inByteVideo;
+		while ((inByteVideo = videoStream.read()) != -1) {
+			videoOutput.write(inByteVideo);
+		}
+		videoOutput.close();
 	}
 }
