@@ -36,18 +36,18 @@ public class RhombusMPDInfo {
      * @param rawMPDDoc The raw MPD doc string.
      */
     RhombusMPDInfo(String rawMPDDoc) throws ParserConfigurationException, IOException, SAXException {
-        final var factory = DocumentBuilderFactory.newInstance();
+        final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 
         final DocumentBuilder builder;
         builder = factory.newDocumentBuilder();
 
-        final var input = new ByteArrayInputStream(rawMPDDoc.getBytes("UTF-8"));
+        final ByteArrayInputStream input = new ByteArrayInputStream(rawMPDDoc.getBytes("UTF-8"));
 
-        final var doc = builder.parse(input);
-        final var MPD = doc.getDocumentElement();
-        final var period = (Element) MPD.getElementsByTagName("Period").item(0);
-        final var adaptationSet = (Element) period.getElementsByTagName("AdaptationSet").item(0);
-        final var segmentTemplate = (Element) adaptationSet.getElementsByTagName("SegmentTemplate").item(0);
+        final Document doc = builder.parse(input);
+        final Element MPD = doc.getDocumentElement();
+        final Element period = (Element) MPD.getElementsByTagName("Period").item(0);
+        final Element adaptationSet = (Element) period.getElementsByTagName("AdaptationSet").item(0);
+        final Element segmentTemplate = (Element) adaptationSet.getElementsByTagName("SegmentTemplate").item(0);
 
         segmentPattern = segmentTemplate.getAttribute("media");
         segmentInitString = segmentTemplate.getAttribute("initialization");

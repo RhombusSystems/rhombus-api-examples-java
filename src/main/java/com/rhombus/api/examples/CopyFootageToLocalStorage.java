@@ -206,7 +206,7 @@ public class CopyFootageToLocalStorage {
                     return true;
                 }
             };
-            final var headers = new ArrayList<Header>();
+            final ArrayList<Header> headers = new ArrayList<>();
             headers.add(new BasicHeader("x-auth-scheme", "api-token"));
             headers.add(new BasicHeader("x-auth-apikey", apiKey));
 
@@ -215,7 +215,7 @@ public class CopyFootageToLocalStorage {
     }
 
     private static String _getSegmentUri(String mpdUri, String segmentName) {
-        for (var ending : URI_FILE_ENDINGS) {
+        for (String ending : URI_FILE_ENDINGS) {
             if (mpdUri.contains(ending)) {
                 return mpdUri.replace(ending, segmentName);
             }
@@ -224,7 +224,7 @@ public class CopyFootageToLocalStorage {
     }
 
     private static String _getSegmentUri(RhombusMPDInfo document, String mpdUri, long index) {
-        final var segmentName = document.segmentPattern.replace("$Number$", String.valueOf(index + document.startIndex));
+        final String segmentName = document.segmentPattern.replace("$Number$", String.valueOf(index + document.startIndex));
         return _getSegmentUri(mpdUri, segmentName);
     }
 
@@ -242,7 +242,7 @@ public class CopyFootageToLocalStorage {
         getMediaUrisRequest.setCameraUuid(deviceUuid);
         final CameraGetMediaUrisWSResponse getMediaUrisResponse = cameraWebservice.getMediaUris(getMediaUrisRequest);
 
-        var mpdUri = useWan ? getMediaUrisResponse.getWanVodMpdUriTemplate() : getMediaUrisResponse.getLanVodMpdUrisTemplates().get(0);
+        String mpdUri = useWan ? getMediaUrisResponse.getWanVodMpdUriTemplate() : getMediaUrisResponse.getLanVodMpdUrisTemplates().get(0);
 
         _logger.info("Mpd URI: " + mpdUri);
 
@@ -259,11 +259,11 @@ public class CopyFootageToLocalStorage {
 
         _logger.info("MPD Response: " + mpdResponse);
 
-        final var mpdDocumentRaw = new String(IOUtils.toByteArray(mpdResponse.getEntity().getContent()));
+        final String mpdDocumentRaw = new String(IOUtils.toByteArray(mpdResponse.getEntity().getContent()));
 
         _logger.trace("MPD (RAW): " + mpdDocumentRaw);
 
-        final var rhombusMPDInfo = new RhombusMPDInfo(mpdDocumentRaw);
+        final RhombusMPDInfo rhombusMPDInfo = new RhombusMPDInfo(mpdDocumentRaw);
 
         {
             final String initSegmentUri = _getSegmentUri(mpdUri, rhombusMPDInfo.segmentInitString);
